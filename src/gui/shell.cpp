@@ -426,12 +426,8 @@ void Shell::init()
 		m_nvim->api0(), &NeovimApi0::neovimNotification, this, &Shell::handleNeovimNotification);
 	connect(m_nvim->api0(), &NeovimApi0::on_ui_try_resize, this, &Shell::neovimResizeFinished);
 
-	QRect screenRect{};
-	if (this->screen()) {
-		screenRect = this->screen()->availableGeometry();
-	}
-	const int64_t shellWidth = screenRect.width() / cellSize().width();
-	const int64_t shellHeight = screenRect.height() / cellSize().height();
+	const int64_t shellWidth = width() / cellSize().width();
+	const int64_t shellHeight = height() / cellSize().height();
 	QVariantMap options;
 	if (m_options.IsTablineEnabled()) {
 		options.insert("ext_tabline", true);
