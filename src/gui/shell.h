@@ -202,7 +202,7 @@ protected:
 	void setCursorFromBusyState() noexcept;
 
 	// GuiFont
-	void updateGuiFontRegisters() noexcept;
+	void updateGuiFontRegisters(bool onAttach = false) noexcept;
 	void writeGuiFontQSettings() noexcept;
 	void handleGuiFontOption(quint32 msgid, quint64 fun, const QVariant& val) noexcept;
 	void handleGuiFontVariable(quint32 msgid, quint64 fun, const QVariant& val) noexcept;
