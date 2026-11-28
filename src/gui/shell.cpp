@@ -172,6 +172,12 @@ QString Shell::escapeFontListEntry(QString value) noexcept
 	return value.replace('\\', QStringLiteral("\\\\")).replace(',', QStringLiteral("\\,"));
 }
 
+/// Quote a value as a Vim single-quoted string literal.
+static QString vimStringLiteral(QString value) noexcept
+{
+	return '\'' + value.replace('\'', QStringLiteral("''")) + '\'';
+}
+
 /// Set the GUI font, or display the current font
 ///
 /// @param fdesc Neovim font description string, "Fira Code:h11".
@@ -285,7 +291,7 @@ bool Shell::setGuiFontWide(const QString& fdesc) noexcept
 	return true;
 }
 
-void Shell::updateGuiFontRegisters() noexcept
+void Shell::updateGuiFontRegisters(bool onAttach) noexcept
 {
 	if (!m_attached || !m_nvim || !m_nvim->api0()) {
 		return;
@@ -299,7 +305,7 @@ void Shell::updateGuiFontRegisters() noexcept
 	connect(getOption,
 		&MsgpackRequest::finished,
 		this,
-		[this, timestamp](quint32 msg, quint64 _f, const QVariant& val) noexcept
+		[this, timestamp, onAttach](quint32 msg, quint64 _f, const QVariant& val) noexcept
 		{
 			if (timestamp != this->m_font_timestamp) {
 				// The font changed since the call
@@ -310,6 +316,19 @@ void Shell::updateGuiFontRegisters() noexcept
 			const QString oldFont{ val.toString() };
 			const QString newFont{ escapeFontListEntry(fontDesc()) };
 			if (newFont.compare(oldFont, Qt::CaseInsensitive) == 0) {
+				return;
+			}
+
+			if (onAttach) {
+				// Skip if the config set 'guifont'. Check inside Neovim,
+				// as the read may be stale / race with option_set message.
+				m_nvim->api0()->vim_command(
+					QStringLiteral(
+						"if !(exists('*nvim_get_option_info2') ? nvim_get_option_info2('guifont', {})"
+						" : exists('*nvim_get_option_info') ? nvim_get_option_info('guifont')"
+						" : {'was_set': 0}).was_set | let &guifont = %1 | endif")
+						.arg(vimStringLiteral(newFont))
+						.toUtf8());
 				return;
 			}
 
@@ -399,7 +418,7 @@ void Shell::setAttached(bool attached)
 
 	// Issue #868: When GuiFont is loaded on startup, m_nvim is not attached yet.
 	// We are connected now, loop-back and update the registers with the correct values.
-	updateGuiFontRegisters();
+	updateGuiFontRegisters(true /*onAttach*/);
 
 	update();
 }
